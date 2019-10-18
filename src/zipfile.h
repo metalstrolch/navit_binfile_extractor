@@ -42,6 +42,22 @@ struct local_file_header {
     uint16_t extra_field_length;
 };
 
+typedef struct extra_field_header extra_field_header_t;
+struct extra_field_header {
+   uint16_t header_id;
+   uint16_t data_size;
+};
+
+#define ZIP64_EXTENDED_INFORMATION_ID 0x0001
+typedef struct zip64_extended_information zip64_extended_information_t;
+struct zip64_extended_information {
+   uint16_t header_id;
+   uint16_t data_size;
+   uint64_t uncompressed_size;
+   uint64_t compressed_size;
+   uint64_t offset;
+   uint32_t disk_nr;
+};
 
 typedef union zipfile_part {
     uint32_t signature;
