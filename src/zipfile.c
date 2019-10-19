@@ -26,6 +26,10 @@
 
 #include "zipfile.h"
 
+#ifndef NAVIT_COMPATIBLE
+#define NAVIT_COMPATIBLE 1
+#endif
+
 zip64_extended_information_t * get_zip64_extension (local_file_header_t* header) {
     char * extra = NULL;
     uint64_t used =0;
@@ -115,16 +119,27 @@ uint64_t copy_file_data (uint64_t size, FILE* infile, FILE*outfile) {
 }
 
 uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * header, FILE* outfile) {
+    uint16_t extended_size;
+    void * extended;
     central_directory_header_t entry;
+#if NAVIT_COMPATIBLE
+    zip64_extended_information_old_t zip64_old;
+#else
     zip64_extended_information_t zip64;
     zip64_extended_information_t * header_zip64;
+#endif
+
+#if NAVIT_COMPATIBLE
+    extended=&zip64_old;
+    extended_size = sizeof(zip64_old);
+#else
+    extended=&zip64;
+    extended_size = sizeof(zip64);
+    header_zip64 = get_zip64_extension (header);
+#endif
+
 
     memset(&entry, 0, sizeof(entry));
-    memset(&zip64, 0, sizeof(zip64));
-
-    header_zip64 = get_zip64_extension (header);
-
-
     entry.central_file_header_signature=CENTRAL_DIRECTORY_HEADER_SIGNATURE;
     entry.version_made_by=0x031e; /* UNIX, spec 3.0 */
     entry.version_needed_to_extract = 0x002d; /* version 4.5 for zip64*/
@@ -135,14 +150,22 @@ uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * he
     entry.crc32 = header->crc32;
     entry.compressed_size = 0xFFFFFFFF;
     entry.uncompressed_size = 0xFFFFFFFF;
+    entry.compressed_size = header->compressed_size;
+    entry.uncompressed_size = header->uncompressed_size;
     entry.file_name_length = header->file_name_length;
-    entry.extra_field_length = sizeof(zip64);
+    entry.extra_field_length = extended_size;
     entry.file_comment_length = 0;
     entry.disk_number_start = 0;
     entry.internal_file_attributes = 0;
     entry.external_file_attributes = 0;
     entry.relative_offset_of_local_header=0xFFFFFFFF;
-
+#if NAVIT_COMPATIBLE
+    memset(&zip64_old, 0, sizeof(zip64_old));
+    zip64_old.header_id=ZIP64_EXTENDED_INFORMATION_ID;
+    zip64_old.data_size=sizeof(zip64_old) - sizeof(extra_field_header_t);
+    zip64_old.offset=offset;
+#else
+    memset(&zip64, 0, sizeof(zip64));
     zip64.header_id=ZIP64_EXTENDED_INFORMATION_ID;
     zip64.data_size=sizeof(zip64) - sizeof(extra_field_header_t);
     if(header_zip64 == NULL) {
@@ -156,10 +179,12 @@ uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * he
         zip64.offset=offset;
         zip64.disk_nr=0;
     }
+#endif
+
     fwrite(&entry, sizeof(entry), 1, outfile);
     fwrite(header +1, header->file_name_length,1, outfile);
-    fwrite(&zip64, sizeof(zip64), 1, outfile);
-    return (sizeof(entry) + header->file_name_length + sizeof(zip64));
+    fwrite(extended, extended_size, 1, outfile);
+    return (sizeof(entry) + header->file_name_length + extended_size);
 }
 
 uint64_t write_central_directory(local_file_header_storage_t * storage, FILE *outfile) {
@@ -175,7 +200,9 @@ uint64_t write_end_of_central_directory(uint64_t offset, uint64_t cd_offset, uin
                                         local_file_header_storage_t *storage,
                                         FILE * outfile) {
     uint64_t written = 0;
+#if !NAVIT_COMPATIBLE
     const char * message="created by NavIT binfile extractor";
+#endif
     end_of_central_dir_64_t eoc64;
     zip64_end_of_central_dir_locator_t eoc64_locator;
     end_of_central_dir_t eoc;
@@ -213,12 +240,18 @@ uint64_t write_end_of_central_directory(uint64_t offset, uint64_t cd_offset, uin
     eoc.central_directory_count_total = 0xFFFF;
     eoc.central_directory_size = 0xFFFFFFFF;
     eoc.central_directory_offset = 0xFFFFFFFF;
+    eoc.file_comment_length = 0;
+#if !NAVIT_COMPATIBLE
+    /* NavIT doesn't support zip file messages. It even crashes if one is there */
     eoc.file_comment_length = strlen(message);
+#endif
 
     fwrite(&eoc, sizeof(eoc), 1, outfile);
     written += sizeof(eoc);
+#if !NAVIT_COMPATIBLE
     fwrite(message, strlen(message), 1, outfile);
     written += strlen(message);
+#endif
 
     return written;
 }

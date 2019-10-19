@@ -22,6 +22,10 @@
 #define __zipfile_h
 #include <stdint.h>
 
+#ifndef NAVIT_COMPATIBLE
+#define NAVIT_COMPATIBLE 1
+#endif
+
 #pragma pack(push)
 #pragma pack(1)
 
@@ -60,6 +64,18 @@ struct zip64_extended_information {
     uint64_t offset;
     uint32_t disk_nr;
 };
+#if NAVIT_COMPATIBLE
+/* NvIT doesn't support a full zip64 extended information inside the central directory.
+ * Currently I don't know if this was a early 64bit zip extension or NavIT's own incompatible
+ * hack. But since NavIT crashes if the real version is used, and zip tools seem to support
+ * this one as well, eyes closed and through */
+typedef struct zip64_extended_information_old zip64_extended_information_old_t;
+struct zip64_extended_information_old {
+    uint16_t header_id;
+    uint16_t data_size;
+    uint64_t offset;
+};
+#endif
 
 #define CENTRAL_DIRECTORY_HEADER_SIGNATURE 0x02014b50
 typedef struct central_directory_header central_directory_header_t;
