@@ -61,11 +61,6 @@ struct zip64_extended_information {
     uint32_t disk_nr;
 };
 
-typedef union zipfile_part {
-    uint32_t signature;
-    local_file_header_t local_file_header;
-} zipfile_part_t;
-
 #define CENTRAL_DIRECTORY_HEADER_SIGNATURE 0x02014b50
 typedef struct central_directory_header central_directory_header_t;
 struct central_directory_header {
@@ -91,6 +86,11 @@ struct central_directory_header {
     /*file comment string without 0*/
 };
 
+typedef union zipfile_part {
+    uint32_t signature;
+    local_file_header_t local_file_header;
+    central_directory_header_t central_directory_header;
+} zipfile_part_t;
 #pragma pack(pop)
 
 typedef struct local_file_header_storage local_file_header_storage_t;

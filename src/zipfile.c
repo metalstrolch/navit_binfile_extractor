@@ -164,12 +164,12 @@ uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * he
 }
 
 uint64_t write_central_directory(local_file_header_storage_t * storage, FILE *outfile) {
-   uint64_t written =0;
-   uint64_t a;
-   for(a =0; a < storage->count; a ++) {
-      written += write_central_directory_entry(storage->offsets[a], storage->headers[a], outfile);
-   }
-   return written;
+    uint64_t written =0;
+    uint64_t a;
+    for(a =0; a < storage->count; a ++) {
+        written += write_central_directory_entry(storage->offsets[a], storage->headers[a], outfile);
+    }
+    return written;
 }
 
 void remember_local_file (local_file_header_storage_t  *storage, local_file_header_t * header, uint64_t offset) {

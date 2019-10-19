@@ -80,6 +80,17 @@ static int64_t process_local_file(uint64_t offset, local_file_header_t  *header,
     }
 }
 
+static int64_t process_central_directory_header(uint64_t offset, central_directory_header_t  *header, FILE *infile,
+        FILE *outfile,
+        struct rect *r,
+        central_directory_header_t **stored_header) {
+    /* read rest of header */
+    if(fread(((uint32_t *)(header)) +1, sizeof(*header) - sizeof(header->central_file_header_signature), 1, infile) > 0) {
+    }
+    if(stored_header != NULL)
+        *stored_header = NULL;
+    return 0;
+}
 
 int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
     int64_t written=0;
@@ -97,13 +108,16 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
         switch(part.signature) {
         case LOCAL_FILE_HEADER_SIGNATURE:
             fprintf(stderr, "Got LOCAL FILE HEADER\n");
-            this_file= process_local_file(written,&(part.local_file_header),infile, outfile, r, &file_header);
+            this_file = process_local_file(written,&(part.local_file_header),infile, outfile, r, &file_header);
             if(file_header != NULL) {
                 /* remember new file header and old written value */
                 remember_local_file (&storage, file_header, written);
                 written += this_file;
             }
             break;
+        case CENTRAL_DIRECTORY_HEADER_SIGNATURE:
+            fprintf(stderr, "Got CENTRAL DIRCTORY HEADER\n");
+            process_central_directory_header(written, &(part.central_directory_header),infile, outfile, r, NULL);
         default:
             break;
         }
