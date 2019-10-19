@@ -65,4 +65,11 @@ typedef union zipfile_part {
 } zipfile_part_t;
 
 #pragma pack(pop)
+
+
+zip64_extended_information_t * get_zip64_extension (local_file_header_t* header);
+uint64_t get_file_length (local_file_header_t  *header);
+void patch_file_length (uint64_t offset, local_file_header_t  *header, uint64_t filesize);
+uint64_t copy_file_data (uint64_t size, FILE* infile, FILE*outfile);
+
 #endif
