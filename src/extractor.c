@@ -27,35 +27,9 @@
 #include "zipfile.h"
 #include "map.h"
 
-typedef struct local_file_header_storage local_file_header_storage_t;
-struct local_file_header_storage {
-    local_file_header_t ** headers;
-    uint64_t * offsets;
-    uint64_t count;
-};
-
-static void remember_local_file (local_file_header_storage_t  *storage, local_file_header_t * header, uint64_t offset) {
-    storage->headers = reallocarray(storage->headers, storage->count +1, sizeof(local_file_header_t*));
-    storage->offsets = reallocarray(storage->offsets, storage->count +1, sizeof(uint64_t));
-    storage->headers[storage->count] = header;
-    storage->offsets[storage->count] = offset;
-    storage->count ++;
-}
-
-static void free_storage(local_file_header_storage_t  *storage) {
-    uint64_t i;
-    for(i = 0; i < storage->count; i ++) {
-        if(storage->headers[i] != NULL)
-            free(storage->headers[i]);
-    }
-    if(storage->headers != NULL)
-        free(storage->headers);
-    if(storage->offsets != NULL)
-        free(storage->offsets);
-}
 
 static int filter_file(local_file_header_t * header, struct rect *r) {
-    return 1;
+    return 0;
 }
 
 static int64_t process_local_file(uint64_t offset, local_file_header_t  *header, FILE *infile, FILE *outfile,
@@ -106,6 +80,7 @@ static int64_t process_local_file(uint64_t offset, local_file_header_t  *header,
     }
 }
 
+
 int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
     int64_t written=0;
     int64_t this_file;
@@ -133,6 +108,8 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
             break;
         }
     }
+    /* write central directory from the things we learned */
+    written += write_central_directory(&storage, outfile);
     fprintf(stderr, "processed %ld files\n",storage.count);
 
     free_storage(&storage);

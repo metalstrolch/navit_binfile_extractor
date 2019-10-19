@@ -40,23 +40,25 @@ struct local_file_header {
     uint32_t uncompressed_size;
     uint16_t file_name_length;
     uint16_t extra_field_length;
+    /*file name string without 0*/
+    /*extra field array */
 };
 
 typedef struct extra_field_header extra_field_header_t;
 struct extra_field_header {
-   uint16_t header_id;
-   uint16_t data_size;
+    uint16_t header_id;
+    uint16_t data_size;
 };
 
 #define ZIP64_EXTENDED_INFORMATION_ID 0x0001
 typedef struct zip64_extended_information zip64_extended_information_t;
 struct zip64_extended_information {
-   uint16_t header_id;
-   uint16_t data_size;
-   uint64_t uncompressed_size;
-   uint64_t compressed_size;
-   uint64_t offset;
-   uint32_t disk_nr;
+    uint16_t header_id;
+    uint16_t data_size;
+    uint64_t uncompressed_size;
+    uint64_t compressed_size;
+    uint64_t offset;
+    uint32_t disk_nr;
 };
 
 typedef union zipfile_part {
@@ -64,12 +66,47 @@ typedef union zipfile_part {
     local_file_header_t local_file_header;
 } zipfile_part_t;
 
+#define CENTRAL_DIRECTORY_HEADER_SIGNATURE 0x02014b50
+typedef struct central_directory_header central_directory_header_t;
+struct central_directory_header {
+    uint32_t central_file_header_signature;
+    uint16_t version_made_by;
+    uint16_t version_needed_to_extract;
+    uint16_t general_purpose_bit_flag;
+    uint16_t compression_method;
+    uint16_t last_mod_file_time;
+    uint16_t last_mod_file_date;
+    uint32_t crc32;
+    uint32_t compressed_size;
+    uint32_t uncompressed_size;
+    uint16_t file_name_length;
+    uint16_t extra_field_length;
+    uint16_t file_comment_length;
+    uint16_t disk_number_start;
+    uint16_t internal_file_attributes;
+    uint32_t external_file_attributes;
+    uint32_t relative_offset_of_local_header;
+    /*file name string without 0*/
+    /*extra field array */
+    /*file comment string without 0*/
+};
+
 #pragma pack(pop)
 
+typedef struct local_file_header_storage local_file_header_storage_t;
+struct local_file_header_storage {
+    local_file_header_t ** headers;
+    uint64_t * offsets;
+    uint64_t count;
+};
 
 zip64_extended_information_t * get_zip64_extension (local_file_header_t* header);
 uint64_t get_file_length (local_file_header_t  *header);
 void patch_file_length (uint64_t offset, local_file_header_t  *header, uint64_t filesize);
 uint64_t copy_file_data (uint64_t size, FILE* infile, FILE*outfile);
+uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * header, FILE* outfile);
 
+uint64_t write_central_directory(local_file_header_storage_t * storage, FILE *outfile);
+void remember_local_file (local_file_header_storage_t  *storage, local_file_header_t * header, uint64_t offset);
+void free_storage(local_file_header_storage_t  *storage);
 #endif

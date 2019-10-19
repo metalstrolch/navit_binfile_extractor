@@ -115,3 +115,79 @@ uint64_t copy_file_data (uint64_t size, FILE* infile, FILE*outfile) {
     return size;
 }
 
+uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * header, FILE* outfile) {
+    central_directory_header_t entry;
+    zip64_extended_information_t zip64;
+    zip64_extended_information_t * header_zip64;
+
+    memset(&entry, 0, sizeof(entry));
+    memset(&zip64, 0, sizeof(zip64));
+
+    header_zip64 = get_zip64_extension (header);
+
+
+    entry.central_file_header_signature=CENTRAL_DIRECTORY_HEADER_SIGNATURE;
+    entry.version_made_by=0x031e; /* UNIX, spec 3.0 */
+    entry.version_needed_to_extract = header->version_needed_to_extract;
+    entry.general_purpose_bit_flag = header->general_purpose_bit_flag;
+    entry.compression_method = header->compressionmethod;
+    entry.last_mod_file_time = header->last_mod_file_time;
+    entry.last_mod_file_date = header->last_mod_file_date;
+    entry.crc32 = header->crc32;
+    entry.compressed_size = 0xFFFFFFFF;
+    entry.uncompressed_size = 0xFFFFFFFF;
+    entry.file_name_length = header->file_name_length;
+    entry.extra_field_length = sizeof(zip64);
+    entry.file_comment_length = 0;
+    entry.disk_number_start = 0;
+    entry.internal_file_attributes = 0;
+    entry.external_file_attributes = 0;
+    entry.relative_offset_of_local_header=0xFFFFFFFF;
+
+    zip64.header_id=ZIP64_EXTENDED_INFORMATION_ID;
+    zip64.data_size=sizeof(zip64) - sizeof(zip64.header_id);
+    if(header_zip64 == NULL) {
+        zip64.uncompressed_size=header->uncompressed_size;
+        zip64.compressed_size=header->compressed_size;
+        zip64.offset=offset;
+        zip64.disk_nr=0;
+    } else {
+        zip64.uncompressed_size=header_zip64->uncompressed_size;
+        zip64.compressed_size=header_zip64->compressed_size;
+        zip64.offset=offset;
+        zip64.disk_nr=0;
+    }
+    fwrite(&entry, sizeof(entry), 1, outfile);
+    fwrite(header +1, header->file_name_length,1, outfile);
+    fwrite(&zip64, sizeof(zip64), 1, outfile);
+    return (sizeof(entry) + header->file_name_length + sizeof(zip64));
+}
+
+uint64_t write_central_directory(local_file_header_storage_t * storage, FILE *outfile) {
+   uint64_t written =0;
+   uint64_t a;
+   for(a =0; a < storage->count; a ++) {
+      written += write_central_directory_entry(storage->offsets[a], storage->headers[a], outfile);
+   }
+   return written;
+}
+
+void remember_local_file (local_file_header_storage_t  *storage, local_file_header_t * header, uint64_t offset) {
+    storage->headers = reallocarray(storage->headers, storage->count +1, sizeof(local_file_header_t*));
+    storage->offsets = reallocarray(storage->offsets, storage->count +1, sizeof(uint64_t));
+    storage->headers[storage->count] = header;
+    storage->offsets[storage->count] = offset;
+    storage->count ++;
+}
+
+void free_storage(local_file_header_storage_t  *storage) {
+    uint64_t i;
+    for(i = 0; i < storage->count; i ++) {
+        if(storage->headers[i] != NULL)
+            free(storage->headers[i]);
+    }
+    if(storage->headers != NULL)
+        free(storage->headers);
+    if(storage->offsets != NULL)
+        free(storage->offsets);
+}
