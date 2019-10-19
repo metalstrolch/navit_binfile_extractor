@@ -108,6 +108,8 @@ static int64_t process_central_directory_header(uint64_t offset, central_directo
 int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
     int64_t written=0;
     int64_t this_file;
+    uint64_t central_directory_offset;
+    uint64_t central_directory_size;
     zipfile_part_t part;
     local_file_header_storage_t storage;
 
@@ -140,7 +142,11 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
         }
     }
     /* write central directory from the things we learned */
-    written += write_central_directory(&storage, outfile);
+    central_directory_offset = written;
+    central_directory_size = write_central_directory(&storage, outfile);
+    written += central_directory_size;
+    /* write end of central directory structures */
+    written += write_end_of_central_directory(written, central_directory_offset, central_directory_size, &storage, outfile);
     fprintf(stderr, "processed %ld files\n",storage.count);
 
     free_storage(&storage);

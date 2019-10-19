@@ -172,6 +172,58 @@ uint64_t write_central_directory(local_file_header_storage_t * storage, FILE *ou
     return written;
 }
 
+uint64_t write_end_of_central_directory(uint64_t offset, uint64_t cd_offset, uint64_t size,
+                                        local_file_header_storage_t *storage,
+                                        FILE * outfile) {
+    uint64_t written = 0;
+    const char * message="created by NavIT binfile extractor";
+    end_of_central_dir_64_t eoc64;
+    zip64_end_of_central_dir_locator_t eoc64_locator;
+    end_of_central_dir_t eoc;
+
+    memset (&eoc64, 0, sizeof(eoc64));
+    memset (&eoc64_locator, 0, sizeof(eoc64_locator));
+    memset (&eoc, 0, sizeof(eoc));
+
+    eoc64.end_of_central_dir_64_signature = END_OF_CENTRAL_DIR_64_SIGNATURE;
+    eoc64.size_of_zip64_end_of_central_directory_record = sizeof(eoc64) - 12;
+    eoc64.version_made_by = 0x031e; /* UNIX, spec 3.0 */
+    eoc64.version_needed_to_extract = 0x002d; /* version 4.5 for zip64*/
+    eoc64.number_of_this_disk = 0;
+    eoc64.number_of_central_directory_disk = 0;
+    eoc64.central_directory_count_this_disk = storage->count;
+    eoc64.central_directory_count_total = storage->count;
+    eoc64.central_directory_size = size;
+    eoc64.central_directory_offset = cd_offset;
+
+    fwrite(&eoc64, sizeof(eoc64), 1, outfile);
+    written += sizeof(eoc64);
+
+    eoc64_locator.zip64_end_of_central_dir_locator_signature = ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIGNATURE;
+    eoc64_locator.number_of_central_directory_disk = 0;
+    eoc64_locator.end_of_central_directory_offset = offset;
+    eoc64_locator.total_number_of_disks = 1;
+
+    fwrite(&eoc64_locator, sizeof(eoc64_locator), 1, outfile);
+    written += sizeof(eoc64_locator);
+
+    eoc.end_of_central_dir_signature = END_OF_CENTRAL_DIR_SIGNATURE;
+    eoc.number_of_this_disk = 0;
+    eoc.number_of_central_directory_disk = 0;
+    eoc.central_directory_count_this_disk = 0xFFFF;
+    eoc.central_directory_count_total = 0xFFFF;
+    eoc.central_directory_size = 0xFFFFFFFF;
+    eoc.central_directory_offset = 0xFFFFFFFF;
+    eoc.file_comment_length = strlen(message);
+
+    fwrite(&eoc, sizeof(eoc), 1, outfile);
+    written += sizeof(eoc);
+    fwrite(message, strlen(message), 1, outfile);
+    written += strlen(message);
+
+    return written;
+}
+
 void remember_local_file (local_file_header_storage_t  *storage, local_file_header_t * header, uint64_t offset) {
     storage->headers = reallocarray(storage->headers, storage->count +1, sizeof(local_file_header_t*));
     storage->offsets = reallocarray(storage->offsets, storage->count +1, sizeof(uint64_t));

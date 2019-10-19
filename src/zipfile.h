@@ -86,10 +86,52 @@ struct central_directory_header {
     /*file comment string without 0*/
 };
 
+#define END_OF_CENTRAL_DIR_64_SIGNATURE 0x06064b50
+typedef struct end_of_central_dir_64 end_of_central_dir_64_t;
+struct end_of_central_dir_64 {
+    uint32_t end_of_central_dir_64_signature;
+    uint64_t size_of_zip64_end_of_central_directory_record;
+    uint16_t version_made_by;
+    uint16_t version_needed_to_extract;
+    uint32_t number_of_this_disk;
+    uint32_t number_of_central_directory_disk;
+    uint64_t central_directory_count_this_disk;
+    uint64_t central_directory_count_total;
+    uint64_t central_directory_size;
+    uint64_t central_directory_offset;
+    /*zip64 extensible data sector*/
+};
+
+#define ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIGNATURE 0x07064b50
+typedef struct zip64_end_of_central_dir_locator zip64_end_of_central_dir_locator_t;
+struct zip64_end_of_central_dir_locator {
+    uint32_t zip64_end_of_central_dir_locator_signature;
+    uint32_t number_of_central_directory_disk;
+    uint64_t end_of_central_directory_offset;
+    uint32_t total_number_of_disks;
+};
+
+#define END_OF_CENTRAL_DIR_SIGNATURE 0x06054b50
+typedef struct end_of_central_dir end_of_central_dir_t;
+struct end_of_central_dir {
+    uint32_t end_of_central_dir_signature;
+    uint16_t number_of_this_disk;
+    uint16_t number_of_central_directory_disk;
+    uint16_t central_directory_count_this_disk;
+    uint16_t central_directory_count_total;
+    uint32_t central_directory_size;
+    uint32_t central_directory_offset;
+    uint16_t file_comment_length;
+    /*ZIP file comment       (variable size)*/
+};
+
 typedef union zipfile_part {
     uint32_t signature;
     local_file_header_t local_file_header;
     central_directory_header_t central_directory_header;
+    end_of_central_dir_64_t end_of_central_dir_64;
+    zip64_end_of_central_dir_locator_t zip64_end_of_central_dir_locator;
+    end_of_central_dir_t end_of_central_dir;
 } zipfile_part_t;
 #pragma pack(pop)
 
@@ -105,6 +147,9 @@ uint64_t get_file_length (local_file_header_t  *header);
 void patch_file_length (uint64_t offset, local_file_header_t  *header, uint64_t filesize);
 uint64_t copy_file_data (uint64_t size, FILE* infile, FILE*outfile);
 uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * header, FILE* outfile);
+uint64_t write_end_of_central_directory(uint64_t offset, uint64_t cd_offset, uint64_t size,
+                                        local_file_header_storage_t *storage,
+                                        FILE * outfile);
 
 uint64_t write_central_directory(local_file_header_storage_t * storage, FILE *outfile);
 void remember_local_file (local_file_header_storage_t  *storage, local_file_header_t * header, uint64_t offset);
