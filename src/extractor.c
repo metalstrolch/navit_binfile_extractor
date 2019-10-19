@@ -84,12 +84,25 @@ static int64_t process_central_directory_header(uint64_t offset, central_directo
         FILE *outfile,
         struct rect *r,
         central_directory_header_t **stored_header) {
+
+    *stored_header = NULL;
     /* read rest of header */
     if(fread(((uint32_t *)(header)) +1, sizeof(*header) - sizeof(header->central_file_header_signature), 1, infile) > 0) {
+        char * filename = NULL;
+        fprintf(stderr, "filename length %d, extra length %d, comment length %d\n", header->file_name_length,
+                header->extra_field_length, header->file_comment_length);
+        *stored_header = (central_directory_header_t*) malloc(sizeof(*header) + header->file_name_length +
+                         header->extra_field_length +
+                         header->file_comment_length);
+        /* copy the header */
+        memcpy(*stored_header, header, sizeof(*header));
+        /* read filename and extra fieldsi and file comment*/
+        filename = (char *)((*stored_header) +1);
+        fread(filename, header->file_name_length + header->extra_field_length + header->file_comment_length, 1, infile);
+
+        fprintf(stderr,"Filename %.*s\n", header->file_name_length, filename);
     }
-    if(stored_header != NULL)
-        *stored_header = NULL;
-    return 0;
+    return 0; /* as we wrote nothing */
 }
 
 int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
@@ -105,6 +118,7 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
 
     while (fread(&(part.signature), sizeof(part.signature), 1, infile) > 0) {
         local_file_header_t * file_header;
+        central_directory_header_t * central_directory_header;
         switch(part.signature) {
         case LOCAL_FILE_HEADER_SIGNATURE:
             fprintf(stderr, "Got LOCAL FILE HEADER\n");
@@ -117,7 +131,10 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
             break;
         case CENTRAL_DIRECTORY_HEADER_SIGNATURE:
             fprintf(stderr, "Got CENTRAL DIRCTORY HEADER\n");
-            process_central_directory_header(written, &(part.central_directory_header),infile, outfile, r, NULL);
+            process_central_directory_header(written, &(part.central_directory_header),infile, outfile, r,
+                                             &central_directory_header);
+            if(central_directory_header != NULL)
+                free(central_directory_header);
         default:
             break;
         }
