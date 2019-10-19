@@ -32,14 +32,13 @@ zip64_extended_information_t * get_zip64_extension (local_file_header_t* header)
     /* get the pointer to the extra fields */
     extra = ((char *)(header +1)) +header->file_name_length;
     if(header->extra_field_length > 0) {
-        fprintf(stderr, "got %d extra bytes\n", header->extra_field_length);
         while(used < header->extra_field_length) {
             zip64_extended_information_t *zip64 = (zip64_extended_information_t*)(extra + used);
             if(zip64->header_id == ZIP64_EXTENDED_INFORMATION_ID) {
                 fprintf(stderr, "zip64 extended header found\n");
                 return zip64;
             } else {
-                used += zip64->data_size + sizeof(zip64->header_id);
+                used += sizeof(extra_field_header_t) + zip64->data_size;
             }
         }
     }
@@ -128,7 +127,7 @@ uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * he
 
     entry.central_file_header_signature=CENTRAL_DIRECTORY_HEADER_SIGNATURE;
     entry.version_made_by=0x031e; /* UNIX, spec 3.0 */
-    entry.version_needed_to_extract = header->version_needed_to_extract;
+    entry.version_needed_to_extract = 0x002d; /* version 4.5 for zip64*/
     entry.general_purpose_bit_flag = header->general_purpose_bit_flag;
     entry.compression_method = header->compressionmethod;
     entry.last_mod_file_time = header->last_mod_file_time;
@@ -145,7 +144,7 @@ uint64_t write_central_directory_entry(uint64_t offset, local_file_header_t * he
     entry.relative_offset_of_local_header=0xFFFFFFFF;
 
     zip64.header_id=ZIP64_EXTENDED_INFORMATION_ID;
-    zip64.data_size=sizeof(zip64) - sizeof(zip64.header_id);
+    zip64.data_size=sizeof(zip64) - sizeof(extra_field_header_t);
     if(header_zip64 == NULL) {
         zip64.uncompressed_size=header->uncompressed_size;
         zip64.compressed_size=header->compressed_size;
