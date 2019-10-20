@@ -22,6 +22,11 @@
 #define __map_h
 #include <stdint.h>
 
+#define WORLD_BOUNDINGBOX_MIN_X -20000000
+#define WORLD_BOUNDINGBOX_MAX_X  20000000
+#define WORLD_BOUNDINGBOX_MIN_Y -20000000
+#define WORLD_BOUNDINGBOX_MAX_Y  20000000
+
 struct coord {
     int x;
     int y;
@@ -29,8 +34,10 @@ struct coord {
 
 
 struct rect {
-    struct coord w;
+    struct coord l;
     struct coord h;
 };
 
+void tile_bbox(char *tile, struct rect *r, int overlap);
+int itembin_bbox_intersects (struct rect * b1, struct rect * b2);
 #endif

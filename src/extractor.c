@@ -29,7 +29,18 @@
 
 
 static int filter_file(local_file_header_t * header, struct rect *r) {
-    return 0;
+    char name[1024];
+    struct rect bbox;
+    /* zero terminate the name */
+    memcpy(name, header +1, header->file_name_length);
+    name[header->file_name_length]=0;
+
+    tile_bbox(name, &bbox, 0);
+    fprintf(stderr,"%s -> (%d,%d)-(%d,%d)\n", name, bbox.l.x, bbox.l.y, bbox.h.x, bbox.h.y);
+    if(itembin_bbox_intersects(r, &bbox))
+        return 0;
+    else
+        return 1;
 }
 
 static int64_t process_local_file(uint64_t offset, local_file_header_t  *header, FILE *infile, FILE *outfile,
@@ -176,7 +187,7 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
     memset(&storage, 0, sizeof(storage));
     storage.count =0;
 
-    fprintf(stderr, "Extract area (%d, %d) - (%d, %d)\n", r->w.x, r->w.y, r->h.x, r->h.y);
+    fprintf(stderr, "Extract area (%d, %d) - (%d, %d)\n", r->l.x, r->l.y, r->h.x, r->h.y);
 
     while (fread(&(part.signature), sizeof(part.signature), 1, infile) > 0) {
         local_file_header_t * file_header;

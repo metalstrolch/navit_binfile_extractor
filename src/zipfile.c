@@ -86,6 +86,12 @@ void patch_file_length (uint64_t offset, local_file_header_t  *header, uint64_t 
         if(filesize == 0)
             header->uncompressed_size=0;
     }
+    if(filesize == 0) {
+        /* patch compression method and crc */
+        header->crc32 = 0;
+        header->compressionmethod=0;
+
+    }
 }
 
 uint64_t copy_file_data (uint64_t size, FILE* infile, FILE*outfile) {
