@@ -23,10 +23,36 @@
 #include <malloc.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <stdlib.h>
 
 #include "zipfile.h"
 #include "map.h"
 
+typedef struct extractor_parameters extractor_parameters_t;
+struct extractor_parameters {
+    struct rect area;
+    double lat_bottom_left;
+    double lon_bottom_left;
+    double lat_top_right;
+    double lon_top_right;
+};
+
+static void usage (void) {
+    fprintf(stderr,"\n"
+            " usage: navit_binfile_extractor [coordinates] \n"
+            "\n"
+            " NavIT binfile extractor extracts given area from a NavIT binfile\n"
+            " It reads binfile from stdin and writes result to stdout. \n"
+            "\n"
+            " Coordinates\n"
+            "  <bottom left lon> <bottom left lat> <top right lon> <top right lat>\n"
+            "\n"
+            " Example: extract Munich, Bavaria from world map\n"
+            "  cat world.bin | navit_binfile_extractor 11.3 47.9 11.7 48.2 > munich.bin\n"
+            "\n");
+}
 
 static int filter_file(local_file_header_t * header, struct rect *r) {
     char name[1024];
@@ -188,8 +214,6 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
     memset(&storage, 0, sizeof(storage));
     storage.count =0;
 
-    fprintf(stderr, "Extract area (%d, %d) - (%d, %d)\n", r->l.x, r->l.y, r->h.x, r->h.y);
-
     while (fread(&(part.signature), sizeof(part.signature), 1, infile) > 0) {
         local_file_header_t * file_header;
         central_directory_header_t * central_directory_header;
@@ -254,15 +278,46 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
 
 
 int main (int argc, char ** argv) {
+    int option_index=1;
     FILE * infile = stdin;
     FILE * outfile = stdout;
-    struct rect r;
+    extractor_parameters_t p;
+    char * endp;
 
     fprintf(stderr, "NavIT binfile extractor \n"
             "Created by Metalstrolch 2019 \n");
 
+    if((argc - option_index) != 4) {
+        usage();
+        exit(1);
+    }
+
+    p.lon_bottom_left = strtod(argv[option_index], &endp);
+    if(endp != (argv[option_index] + strlen(argv[option_index]))) {
+        usage();
+        exit(1);
+    }
+    p.lat_bottom_left = strtod(argv[option_index +1], &endp);
+    if(endp != (argv[option_index +1] + strlen(argv[option_index +1]))) {
+        usage();
+        exit(1);
+    }
+    p.lon_top_right = strtod(argv[option_index +2], &endp);
+    if(endp != (argv[option_index +2] + strlen(argv[option_index +2]))) {
+        usage();
+        exit(1);
+    }
+    p.lat_top_right = strtod(argv[option_index +3], &endp);
+    if(endp != (argv[option_index +3] + strlen(argv[option_index +3]))) {
+        usage();
+        exit(1);
+    }
     /* same order as the filename from planet extractor */
-    getmercator(49.3,40.1,50.5,40.8, &r);
-    return process_binfile (infile, outfile, &r);
+    getmercator(p.lon_bottom_left,p.lat_bottom_left,p.lon_top_right,p.lat_top_right, &p.area);
+
+    fprintf(stderr, "Extract area (lon %f, lat %f) - (lon %f, lat %f)\n",p.lon_bottom_left, p.lat_bottom_left,
+            p.lon_top_right, p.lat_top_right);
+    fprintf(stderr, "NavIT Mercator (%d, %d) - (%d, %d)\n", p.area.l.x, p.area.l.y, p.area.h.x, p.area.h.y);
+    return process_binfile (infile, outfile, &p.area);
 }
 
