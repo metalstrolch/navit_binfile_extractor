@@ -284,8 +284,10 @@ int main (int argc, char ** argv) {
     extractor_parameters_t p;
     char * endp;
 
-    fprintf(stderr, "NavIT binfile extractor \n"
-            "Created by Metalstrolch 2019 \n");
+    fprintf(stderr, "NavIT binfile extractor\n"
+            "Created by Metalstrolch 2019\n"
+            "This is free software; see the source for copying conditions.  There is NO\n"
+            "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
 
     if((argc - option_index) != 4) {
         usage();
