@@ -39,5 +39,7 @@ struct rect {
 };
 
 void tile_bbox(char *tile, struct rect *r, int overlap);
+int tile_len(char *tile);
 int itembin_bbox_intersects (struct rect * b1, struct rect * b2);
+void getmercator(double sx,double sy, double ex, double ey, struct rect * bbox);
 #endif

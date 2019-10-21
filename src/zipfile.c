@@ -39,7 +39,7 @@ zip64_extended_information_t * get_zip64_extension (local_file_header_t* header)
         while(used < header->extra_field_length) {
             zip64_extended_information_t *zip64 = (zip64_extended_information_t*)(extra + used);
             if(zip64->header_id == ZIP64_EXTENDED_INFORMATION_ID) {
-                fprintf(stderr, "zip64 extended header found\n");
+                //fprintf(stderr, "zip64 extended header found\n");
                 return zip64;
             } else {
                 used += sizeof(extra_field_header_t) + zip64->data_size;

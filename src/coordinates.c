@@ -23,6 +23,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
 
 #include "map.h"
 
@@ -88,4 +89,19 @@ int itembin_bbox_intersects (struct rect * b1, struct rect * b2) {
         return 0;
 
     return 1;
+}
+
+/* navit uses slightly wrong erth radius. */
+#define EARTHR 6371000.0
+//#define EARTHR 6378137.0
+/* requires math.h and libm */
+void getmercator(double sx,double sy, double ex, double ey, struct rect * bbox) {
+    sx = sx*EARTHR*M_PI/180;
+    sy = log(tan(M_PI_4+sy*M_PI/360))*EARTHR;
+    ex = ex*EARTHR*M_PI/180;
+    ey = log(tan(M_PI_4+ey*M_PI/360))*EARTHR;
+    bbox->l.x=round(sx);
+    bbox->l.y=round(sy);
+    bbox->h.x=round(ex);
+    bbox->h.y=round(ey);
 }

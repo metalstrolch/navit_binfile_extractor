@@ -35,11 +35,12 @@ static int filter_file(local_file_header_t * header, struct rect *r) {
     memcpy(name, header +1, header->file_name_length);
     name[header->file_name_length]=0;
 
-    tile_bbox(name, &bbox, 0);
-    fprintf(stderr,"%s -> (%d,%d)-(%d,%d)\n", name, bbox.l.x, bbox.l.y, bbox.h.x, bbox.h.y);
-    if(itembin_bbox_intersects(r, &bbox))
+    tile_bbox(name, &bbox, 1);
+    //fprintf(stderr,"%s -> (%d,%d)-(%d,%d)\n", name, bbox.l.x, bbox.l.y, bbox.h.x, bbox.h.y);
+    if((itembin_bbox_intersects(r, &bbox)) || (tile_len(name) == 0)) {
+        fprintf(stderr, "keep %s\n", name);
         return 0;
-    else
+    } else
         return 1;
 }
 
@@ -52,7 +53,7 @@ static int64_t process_local_file(uint64_t offset, local_file_header_t  *header,
     if(fread(((uint32_t *)(header)) +1, sizeof(*header) - sizeof(header->local_file_header_signature), 1, infile) > 0) {
         char * filename = NULL;
         uint64_t filesize;
-        fprintf(stderr, "filename length %d, extra length %d\n", header->file_name_length, header->extra_field_length);
+        //fprintf(stderr, "filename length %d, extra length %d\n", header->file_name_length, header->extra_field_length);
         *stored_header = (local_file_header_t*) malloc(sizeof(*header) + header->file_name_length + header->extra_field_length);
         /* copy the header */
         memcpy(*stored_header, header, sizeof(*header));
@@ -85,7 +86,7 @@ static int64_t process_local_file(uint64_t offset, local_file_header_t  *header,
         /* copy the compressed file */
         copy_file_data(filesize, infile, outfile);
 
-        fprintf(stderr,"Filename %.*s, %ld\n", header->file_name_length, filename, filesize);
+        //fprintf(stderr,"Filename %.*s, %ld\n", header->file_name_length, filename, filesize);
         /* done */
         return sizeof(*header) + header->file_name_length + header->extra_field_length + filesize;
     }
@@ -100,8 +101,8 @@ static int64_t process_central_directory_header(uint64_t offset, central_directo
     /* read rest of header */
     if(fread(((uint32_t *)(header)) +1, sizeof(*header) - sizeof(header->central_file_header_signature), 1, infile) > 0) {
         char * filename = NULL;
-        fprintf(stderr, "filename length %d, extra length %d, comment length %d\n", header->file_name_length,
-                header->extra_field_length, header->file_comment_length);
+        //fprintf(stderr, "filename length %d, extra length %d, comment length %d\n", header->file_name_length,
+        //        header->extra_field_length, header->file_comment_length);
         *stored_header = (central_directory_header_t*) malloc(sizeof(*header) + header->file_name_length +
                          header->extra_field_length +
                          header->file_comment_length);
@@ -111,7 +112,7 @@ static int64_t process_central_directory_header(uint64_t offset, central_directo
         filename = (char *)((*stored_header) +1);
         fread(filename, header->file_name_length + header->extra_field_length + header->file_comment_length, 1, infile);
 
-        fprintf(stderr,"Filename %.*s\n", header->file_name_length, filename);
+        //fprintf(stderr,"Filename %.*s\n", header->file_name_length, filename);
     }
     return 0; /* as we wrote nothing */
 }
@@ -126,7 +127,7 @@ static int64_t process_end_of_central_dir_64(uint64_t offset, end_of_central_dir
     if(fread(((uint32_t *)(header)) +1, sizeof(*header) - sizeof(header->end_of_central_dir_64_signature), 1, infile) > 0) {
         char * extra = NULL;
         uint64_t extra_length = (header->size_of_zip64_end_of_central_directory_record+12) - sizeof(*header);
-        fprintf(stderr, "extra length %ld\n", extra_length);
+        //fprintf(stderr, "extra length %ld\n", extra_length);
         *stored_header = (end_of_central_dir_64_t*) malloc(sizeof(*header) + extra_length);
         /* copy the header */
         memcpy(*stored_header, header, sizeof(*header));
@@ -153,7 +154,7 @@ static int64_t process_end_of_central_dir(uint64_t offset, end_of_central_dir_t 
         if(header->file_comment_length > 0) {
             comment = (char *)((*stored_header) +1);
             fread(comment, header->file_comment_length, 1, infile);
-            fprintf(stderr,"Comment %.*s\n", header->file_comment_length, comment);
+            //fprintf(stderr,"Comment %.*s\n", header->file_comment_length, comment);
         }
     }
     return 0; /* as we wrote nothing */
@@ -197,7 +198,7 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
         end_of_central_dir_t * end_of_central_dir;
         switch(part.signature) {
         case LOCAL_FILE_HEADER_SIGNATURE:
-            fprintf(stderr, "Got LOCAL FILE HEADER\n");
+            //fprintf(stderr, "Got LOCAL FILE HEADER\n");
             this_file = process_local_file(written,&(part.local_file_header),infile, outfile, r, &file_header);
             if(file_header != NULL) {
                 /* remember new file header and old written value */
@@ -206,35 +207,35 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
             }
             break;
         case CENTRAL_DIRECTORY_HEADER_SIGNATURE:
-            fprintf(stderr, "Got CENTRAL DIRCTORY HEADER\n");
+            //fprintf(stderr, "Got CENTRAL DIRCTORY HEADER\n");
             process_central_directory_header(written, &(part.central_directory_header),infile, outfile, r,
                                              &central_directory_header);
             if(central_directory_header != NULL)
                 free(central_directory_header);
             break;
         case END_OF_CENTRAL_DIR_64_SIGNATURE:
-            fprintf(stderr, "Got ZIP64 END OF CENTRAL DIRECTORY\n");
+            //fprintf(stderr, "Got ZIP64 END OF CENTRAL DIRECTORY\n");
             process_end_of_central_dir_64(written, &(part.end_of_central_dir_64),infile, outfile, r,
                                           &end_of_central_dir_64);
             if(end_of_central_dir_64 != NULL)
                 free(end_of_central_dir_64);
             break;
         case ZIP64_END_OF_CENTRAL_DIR_LOCATOR_SIGNATURE:
-            fprintf(stderr, "Got ZIP64 CENTRAL DIECTORY LOCATOR\n");
+            //fprintf(stderr, "Got ZIP64 CENTRAL DIECTORY LOCATOR\n");
             process_zip64_end_of_central_dir_locator(written, &(part.zip64_end_of_central_dir_locator),infile, outfile, r,
                     &zip64_end_of_central_dir_locator);
             if(zip64_end_of_central_dir_locator != NULL)
                 free(zip64_end_of_central_dir_locator);
             break;
         case END_OF_CENTRAL_DIR_SIGNATURE:
-            fprintf(stderr, "Got END OF CENTRAL DIRECTORY\n");
+            //fprintf(stderr, "Got END OF CENTRAL DIRECTORY\n");
             process_end_of_central_dir(written, &(part.end_of_central_dir),infile, outfile, r,
                                        &end_of_central_dir);
             if(end_of_central_dir != NULL)
                 free(end_of_central_dir);
             break;
         default:
-            fprintf(stderr, "Got unknown header %x\n", part.signature);
+            //fprintf(stderr, "Got unknown header %x\n", part.signature);
             break;
         }
     }
@@ -255,10 +256,13 @@ int process_binfile (FILE *infile, FILE* outfile, struct rect * r) {
 int main (int argc, char ** argv) {
     FILE * infile = stdin;
     FILE * outfile = stdout;
-    struct rect r = {{0,0},{1,1}};
+    struct rect r;
 
     fprintf(stderr, "NavIT binfile extractor \n"
             "Created by Metalstrolch 2019 \n");
+
+    /* same order as the filename from planet extractor */
+    getmercator(49.3,40.1,50.5,40.8, &r);
     return process_binfile (infile, outfile, &r);
 }
 
