@@ -32,6 +32,7 @@ struct rect world_bbox = {
     { WORLD_BOUNDINGBOX_MAX_X, WORLD_BOUNDINGBOX_MAX_Y},
 };
 
+#if 0
 void tile_bbox(char *tile, struct rect *r, int overlap) {
     struct coord c;
     int xo,yo;
@@ -58,6 +59,57 @@ void tile_bbox(char *tile, struct rect *r, int overlap) {
             r->h.x=c.x+xo;
             r->h.y=c.y+yo;
             break;
+        }
+        tile++;
+    }
+}
+#endif
+void tile_bbox(char *tile, struct rect *r, int overlap) {
+    struct coord c;
+    int xo,yo;
+    *r=world_bbox;
+    while (*tile) {
+        c.x=(r->l.x+r->h.x)/2;
+        c.y=(r->l.y+r->h.y)/2;
+        xo=(r->h.x-r->l.x)*overlap/100;
+        yo=(r->h.y-r->l.y)*overlap/100;
+        switch (*tile) {
+        case 'a':
+            if(*(tile +1)) {
+                r->l.x=c.x;
+                r->l.y=c.y;
+            } else {
+                r->l.x=c.x-xo;
+                r->l.y=c.y-yo;
+            }
+            break;
+        case 'b':
+            if(*(tile +1)) {
+                r->h.x=c.x;
+                r->l.y=c.y;
+            } else {
+                r->h.x=c.x+xo;
+                r->l.y=c.y-yo;
+            }
+            break;
+        case 'c':
+            if(*(tile +1)) {
+                r->l.x=c.x;
+                r->h.y=c.y;
+            } else {
+                r->l.x=c.x-xo;
+                r->h.y=c.y+yo;
+            }
+            break;
+        case 'd':
+            if(*(tile +1)) {
+                r->h.x=c.x;
+                r->h.y=c.y;
+            } else {
+                r->h.x=c.x+xo;
+                r->h.y=c.y+yo;
+                break;
+            }
         }
         tile++;
     }
