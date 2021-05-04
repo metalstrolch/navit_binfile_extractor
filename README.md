@@ -11,5 +11,6 @@ Created by Metalstrolch 2019
  \<bottom left lon\> \<bottom left lat\> \<top right lon\> \<top right lat\>
 
  Example: extract Munich, Bavaria from world map
- cat world.bin | navit_binfile_extractor 11.3 47.9 11.7 48.2 \> munich.bin
-         
+```bash
+cat world.bin | navit_binfile_extractor 11.3 47.9 11.7 48.2 > munich.bin
+```         
